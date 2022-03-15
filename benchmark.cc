@@ -101,6 +101,8 @@ void execute_64_bit(Benchmark benchmark, bool pareto, bool only_mode,
 }
 
 int main(int argc, char* argv[]) {
+  __itt_pause(); // TODO Verify it works as expected
+
   cxxopts::Options options("benchmark", "Searching on sorted data benchmark");
   options.positional_help("<data> <lookups>");
   options.add_options()("data", "Data file with keys",

@@ -14,6 +14,8 @@
 #include "util.h"
 #include "utils/perf_event.h"
 
+#include <ittapi/include/ittnotify.h>
+
 #ifdef __linux__
 #define checkLinux(x) (x)
 #else
@@ -109,11 +111,13 @@ class Benchmark {
     }
 
     build_ns_ = index.Build(index_data_);
+    __itt_resume();
+    // TODO Verify it works as expected
 
     // Do equality lookups.
     if constexpr (!sosd_config::fast_mode) {
       if (track_errors_) {
-        return DoLookupsWithErrorTracking(index);
+        return DoLookupsWithErrorTracking(index); // TODO consider where instrumentation can be added in this case
       }
       if (perf_) {
         checkLinux(({
@@ -216,6 +220,8 @@ class Benchmark {
         });
       }
 
+      __itt_pause();
+      // TODO Verify it works as expected
       runs_[i] = ms;
       if (run_failed) {
         runs_ = std::vector<uint64_t>(num_repeats_, 0);

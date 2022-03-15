@@ -24,7 +24,7 @@ endif ()
 
 set(SOURCE_FILES util.h)
 file(GLOB_RECURSE RMI_SOURCES "competitors/rmi/*.cpp")
-file(GLOB_RECURSE BENCH_SOURCES "benchmarks/*.cc")
+file(GLOB_RECURSE BENCH_SOURLRCES "benchmarks/*.cc")
 
 if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 10.0)
     # FIXME cannot link with g++-9
@@ -41,6 +41,7 @@ add_executable(generate generate.cc ${SOURCE_FILES})
 target_link_libraries(generate Threads::Threads)
 
 add_subdirectory(robin-map)
+add_subdirectory(ittapi)
 
 add_custom_target(
         libfast64
