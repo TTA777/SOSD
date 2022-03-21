@@ -24,7 +24,7 @@ endif ()
 
 set(SOURCE_FILES util.h)
 file(GLOB_RECURSE RMI_SOURCES "competitors/rmi/*.cpp")
-file(GLOB_RECURSE BENCH_SOURLRCES "benchmarks/*.cc")
+file(GLOB_RECURSE BENCH_SOURCES "benchmarks/*.cc")
 
 if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 10.0)
     # FIXME cannot link with g++-9
@@ -65,7 +65,8 @@ target_include_directories(benchmark
         PRIVATE "competitors/rs/include"
         PRIVATE "competitors/stx-btree-0.9/include"
         PRIVATE "competitors/ts/include"
-        PRIVATE "fast64")
+        PRIVATE "fast64"
+        PRIVATE "ittapi")
 add_dependencies(benchmark libfast64)
 
 if (${LINUX})
@@ -78,4 +79,5 @@ target_link_libraries(benchmark
         PRIVATE ${CMAKE_SOURCE_DIR}/fast64/target/release/libfast64.a
         PRIVATE tsl::robin_map
         PRIVATE Threads::Threads dtl
-        PRIVATE dl)
+        PRIVATE dl
+        PRIVATE ittnotify)

@@ -14,7 +14,7 @@
 #include "util.h"
 #include "utils/perf_event.h"
 
-#include <ittapi/include/ittnotify.h>
+#include <ittnotify.h>
 
 #ifdef __linux__
 #define checkLinux(x) (x)
