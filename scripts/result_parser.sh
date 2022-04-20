@@ -4,33 +4,26 @@ RESULT_NAME=results/$1
 QUERY_COUNT=10000000 #TODO replace with other count if workload is changed from 10M
 function formatTmamMetric() {
   UNFORMATED=$1
-  echo -n $UNFORMATED | sed 's/ *:.*//'
-  echo -ne '\t'
-  echo $UNFORMATED | sed 's/ *%.*//' | sed 's/.*://'
+  echo -n $UNFORMATED| sed 's/ *%.*//' | sed 's/.*://'
+  echo -ne "\t"
 }
 
 function getOverallMetrics() {
   FILE=$1
   SOSDRESULT=$(cat $FILE | grep RESULT| sed 's/,/ /g' )
-  echo -ne 'Index\t'
-  echo $SOSDRESULT | awk '{print $2}'
-  echo -ne 'Dataset \t'
-  echo $FILE | sed 's/_results.txt//' | sed 's/results\///'
-  echo -ne 'Memory (Bytes)\t'
-  echo $SOSDRESULT | awk '{print $5}'
-  echo -ne 'Build_time(ms?|ns?)\t'
-  echo $SOSDRESULT | awk '{print $6}'
-  echo -ne 'Average_lookup_time(ns?)\t'
-  echo $SOSDRESULT | awk '{print $4}'
+  echo $SOSDRESULT'\t' | awk '{printf $2 "\t"}' #Index name
+  echo -ne $FILE'\t' | sed 's/_results.txt//' | sed 's/results\///' #Dataset name
+  echo $SOSDRESULT | awk '{printf $5 "\t"}' # Memory(bytes)
+  echo $SOSDRESULT | awk '{printf $6 "\t"}' # Build_time(ms?|ns?)
+  echo $SOSDRESULT | awk '{printf $4 "\t"}' #  Average_lookup_time(ns?)\
   formatTmamMetric "$(cat $FILE | grep 'Elapsed Time')"
-  formatTmamMetric "$(cat $FILE | grep 'Clockticks:')"
-  formatTmamMetric "$(cat $FILE | grep 'Instructions Retired:')"
+  formatTmamMetric "$(cat $FILE | grep 'Clockticks:'| sed 's/,//g')"
+  formatTmamMetric "$(cat $FILE | grep 'Instructions Retired:'| sed 's/,//g')"
   formatTmamMetric "$(cat $FILE | grep 'CPI Rate:')"
-  Retired=$(formatTmamMetric "$(cat $FILE | grep 'Instructions Retired:' )" | awk '{print $3}' | sed 's/,//g')
-  Clockticks=$(formatTmamMetric "$(cat $FILE | grep 'Clockticks:' )" | awk '{print $2}'| sed 's/,//g')
-  echo -ne "Instructions retired per request\t"
-  awk -v var1=$Retired -v var2=$QUERY_COUNT 'BEGIN { print  ( var1 / var2 ) }'
-}
+  Retired=$(formatTmamMetric "$(cat $FILE | grep 'Instructions Retired:' )"  | sed 's/,//g')
+  Clockticks=$(formatTmamMetric "$(cat $FILE | grep 'Clockticks:' )" | sed 's/,//g')
+  awk -v var1="$Retired" -v var2="$QUERY_COUNT" 'BEGIN { printf  ( var1 / var2 ) "\t" }' # Instructions retired per request
+  }
 
 function printColumnHeaders() {
   echo -ne "Index \t"
@@ -56,9 +49,8 @@ function printColumnHeaders() {
   echo -e "Core Bound\t"
 }
 
+printColumnHeaders
 for file in $(ls results | grep .txt); do
-  echo $file #TODO delete me
-  printColumnHeaders
   getOverallMetrics "results/"$file
   # TMAM metrics
   while read -r line; do
