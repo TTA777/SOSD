@@ -14,8 +14,8 @@ function getOverallMetrics() {
   echo $SOSDRESULT'\t' | awk '{printf $2 "\t"}' #Index name
   echo -ne $FILE'\t' | sed 's/_results.txt//' | sed 's/results\///' #Dataset name
   echo $SOSDRESULT | awk '{printf $5 "\t"}' # Memory(bytes)
-  echo $SOSDRESULT | awk '{printf $6 "\t"}' # Build_time(ms?|ns?)
-  echo $SOSDRESULT | awk '{printf $4 "\t"}' #  Average_lookup_time(ns?)\
+  echo $SOSDRESULT | awk '{printf $6 "\t"}' # Build_time(ns)
+  echo $SOSDRESULT | awk '{printf $4 "\t"}' #  Average_lookup_time(ns)\
   formatTmamMetric "$(cat $FILE | grep 'Elapsed Time')"
   formatTmamMetric "$(cat $FILE | grep 'Clockticks:'| sed 's/,//g')"
   formatTmamMetric "$(cat $FILE | grep 'Instructions Retired:'| sed 's/,//g')"
