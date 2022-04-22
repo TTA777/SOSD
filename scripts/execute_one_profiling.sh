@@ -26,7 +26,7 @@ function do_benchmark() {
     echo "Already have results for $1"
   else
     echo "Executing workload $1"
-    vtune -collect uarch-exploration $BENCHMARK -r $2 ./data/$1 ./data/$1_equality_lookups_10M  --only=$3 | tee ./results/$1_results.txt
+    vtune -collect uarch-exploration -start-paused $BENCHMARK -r $2 ./data/$1 ./data/$1_equality_lookups_10M  --only=$3 | tee ./results/$1_results.txt
   fi
 }
 
@@ -39,7 +39,7 @@ function do_benchmark_csv() {
     rm $RESULTS
   fi
   echo "Executing workload $1 and printing to CSV"
-  vtune -collect uarch-exploration $BENCHMARK -r $2 ./data/$1 ./data/$1_equality_lookups_10M  --csv --only=$3
+  vtune -collect uarch-exploration -start-paused $BENCHMARK -r $2 ./data/$1 ./data/$1_equality_lookups_10M  --csv --only=$3
 }
 
 mkdir -p ./results

@@ -15,8 +15,10 @@ function getOverallMetrics() {
   echo -ne $FILE'\t' | sed 's/_results.*.txt//' | sed 's/results\///' #Dataset name
   echo $SOSDRESULT | awk '{printf $5 "\t"}' # Memory(bytes)
   echo $SOSDRESULT | awk '{printf $6 "\t"}' # Build_time(ns)
-  echo $SOSDRESULT | awk '{printf $8 "\t"}' # Total_Query_time(ns)
-  echo $SOSDRESULT | awk '{printf $9 "\t"}' # Lookup count
+  Total_Query_time=$(echo $SOSDRESULT | awk '{printf $8 "\t"}') # Total_Query_time(ns)
+  echo -ne $Total_Query_time'\t'
+  LookupCount=$(echo $SOSDRESULT | awk '{printf $9 "\t"}')
+  awk -v var1="$LookupCount" -v var2="$Total_Query_time" 'BEGIN { printf  ( var1 / (var2 / 1000000000) ) "\t" }' # Throughput (Lookups/s)
   echo $SOSDRESULT | awk '{printf $4 "\t"}' #  Average_lookup_time(ns)\
   formatTmamMetric "$(cat $FILE | grep 'Clockticks:'| sed 's/,//g')"
   formatTmamMetric "$(cat $FILE | grep 'Instructions Retired:'| sed 's/,//g')"
@@ -32,8 +34,8 @@ function printColumnHeaders() {
   echo -ne "Memory (Bytes) \t"
   echo -ne "Build_time(ns) \t"
   echo -ne "Total_Query_time(ns) \t"
+  echo -ne "Throughput (Lookups/s)\t"
   echo -ne "Average_lookup_time(ns) \t"
-  echo -ne "Lookup count\t"
   echo -ne "Clockticks\t"
   echo -ne "Instructions Retired\t"
   echo -ne "CPI Rate\t"
