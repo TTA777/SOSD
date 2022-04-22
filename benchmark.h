@@ -111,8 +111,6 @@ class Benchmark {
     }
 
     build_ns_ = index.Build(index_data_);
-    __itt_resume();
-    // TODO Verify it works as expected
 
     // Do equality lookups.
     if constexpr (!sosd_config::fast_mode) {
@@ -216,12 +214,11 @@ class Benchmark {
             unsigned int limit = std::min(begin + batch_size, lookups_.size());
             DoEqualityLookupsCoreLoop<Index, time_each, fence, clear_cache>(
                 index, begin, limit, run_failed);
+            __itt_pause();
           }
         });
       }
 
-      __itt_pause();
-      // TODO Verify it works as expected
       runs_[i] = ms;
       if (run_failed) {
         runs_ = std::vector<uint64_t>(num_repeats_, 0);
@@ -233,6 +230,7 @@ class Benchmark {
   template <class Index, bool time_each, bool fence, bool clear_cache>
   void DoEqualityLookupsCoreLoop(Index& index, unsigned int start,
                                  unsigned int limit, bool& run_failed) {
+    __itt_resume();
     SearchBound bound = {};
     size_t qualifying;
     uint64_t result;
@@ -351,7 +349,7 @@ class Benchmark {
       std::cout << "RESULT: " << index.name() << "," << index.variant()
                 << all_times.str()  // has a leading comma
                 << "," << index.size() << "," << build_ns_ << ","
-                << searcher_.name() << std::endl;
+                << searcher_.name() << "," << runs_[0] << ',' << lookups_.size() << std::endl;
     }
     if (csv_) {
       PrintResultCSV(index);
