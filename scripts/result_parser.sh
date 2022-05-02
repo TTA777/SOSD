@@ -1,36 +1,42 @@
 #! /usr/bin/env bash
 # Script assumes SOSD is only run for a single data structure at a time, and for a single repetition
+INDEXES="ALEX BTree ART PGM"
 RESULT_NAME=results/$1
 QUERY_COUNT=10000000 #TODO replace with other count if workload is changed from 10M
 function formatTmamMetric() {
   UNFORMATED=$1
-  echo -n $UNFORMATED| sed 's/ *%.*//' | sed 's/.*://'
+  echo -n $UNFORMATED | sed 's/ *%.*//' | sed 's/.*://'
   echo -ne "\t"
 }
 
 function getOverallMetrics() {
   FILE=$1
-  SOSDRESULT=$(cat $FILE | grep RESULT| sed 's/,/ /g' )
-  echo $SOSDRESULT'\t' | awk '{printf $2 "\t"}' #Index name
-  echo -ne $FILE'\t' | sed 's/_results.*.txt//' | sed 's/results\///' #Dataset name
-  echo $SOSDRESULT | awk '{printf $5 "\t"}' # Memory(bytes)
-  echo $SOSDRESULT | awk '{printf $6 "\t"}' # Build_time(ns)
+  SOSDRESULT=$(cat $FILE | grep RESULT | sed 's/,/ /g')
+  echo -ne $FILE'\t' | sed 's/results\///' | sed 's/_results.*.txt//'                             #Full dataset name
+  echo -ne $FILE'\t' | perl -pe 's/_[0-9].+?M//' | sed 's/results\///' | sed 's/_results.*.txt//' #Dataset name
+  echo $SOSDRESULT'\t' | awk '{printf $2 "\t"}'                                                   #Index name
+  echo -ne $FILE'\t' | sed 's/M_.*//' | grep -o '[0-9:]*' | tr -d '\n'
+  echo -ne '\t'                                                 #NUmber of entries in dataset (Millions)
+  echo $SOSDRESULT | awk '{printf $5 "\t"}'                     # Memory(bytes)
+  echo $SOSDRESULT | awk '{printf $6 "\t"}'                     # Build_time(ns)
   Total_Query_time=$(echo $SOSDRESULT | awk '{printf $8 "\t"}') # Total_Query_time(ns)
   echo -ne $Total_Query_time'\t'
   LookupCount=$(echo $SOSDRESULT | awk '{printf $9 "\t"}')
   awk -v var1="$LookupCount" -v var2="$Total_Query_time" 'BEGIN { printf  ( var1 / (var2 / 1000000000) ) "\t" }' # Throughput (Lookups/s)
-  echo $SOSDRESULT | awk '{printf $4 "\t"}' #  Average_lookup_time(ns)\
-  formatTmamMetric "$(cat $FILE | grep 'Clockticks:'| sed 's/,//g')"
-  formatTmamMetric "$(cat $FILE | grep 'Instructions Retired:'| sed 's/,//g')"
+  echo $SOSDRESULT | awk '{printf $4 "\t"}'
+  formatTmamMetric "$(cat $FILE | grep 'Clockticks:' | sed 's/,//g')" #  Average_lookup_time(ns)"
+  formatTmamMetric "$(cat $FILE | grep 'Instructions Retired:' | sed 's/,//g')"
   formatTmamMetric "$(cat $FILE | grep 'CPI Rate:')"
-  Retired=$(formatTmamMetric "$(cat $FILE | grep 'Instructions Retired:' )"  | sed 's/,//g')
-  Clockticks=$(formatTmamMetric "$(cat $FILE | grep 'Clockticks:' )" | sed 's/,//g')
+  Retired=$(formatTmamMetric "$(cat $FILE | grep 'Instructions Retired:')" | sed 's/,//g')
+  Clockticks=$(formatTmamMetric "$(cat $FILE | grep 'Clockticks:')" | sed 's/,//g')
   awk -v var1="$Retired" -v var2="$QUERY_COUNT" 'BEGIN { printf  ( var1 / var2 ) "\t" }' # Instructions retired per request
-  }
+}
 
 function printColumnHeaders() {
-  echo -ne "Index \t"
+  echo -ne "Full dataset name\t"
   echo -ne "Dataset \t"
+  echo -ne "Index \t"
+  echo -ne "Entries (Millions) \t"
   echo -ne "Memory (Bytes) \t"
   echo -ne "Build_time(ns) \t"
   echo -ne "Total_Query_time(ns) \t"
@@ -54,13 +60,19 @@ function printColumnHeaders() {
 }
 
 printColumnHeaders
-for file in $(ls results | grep .txt); do
-  getOverallMetrics "results/"$file
-  # TMAM metrics
-  while read -r line; do
-    if [[ $line =~ "Bad" || $line =~ "Bound:" || $line =~ "Retiring" ]]; then
-      formatTmamMetric "$line"
+for dataset in $(cat ./scripts/datasets_under_test.txt); do
+  for index in $INDEXES; do
+    file=$dataset'_results_'$index'.txt'
+    if [ -f 'results/'$file ]; then
+      getOverallMetrics "results/"$file
+      # TMAM metrics
+      while read -r line; do
+        if [[ $line =~ "Bad" || $line =~ "Bound:" || $line =~ "Retiring" ]]; then
+          formatTmamMetric "$line"
+        fi
+      done <"results/$file"
+      echo
     fi
-  done <"results/$file"
+  done
   echo
 done
