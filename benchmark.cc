@@ -37,7 +37,7 @@ using namespace std;
       auto search = search_class<type>();                                 \
       sosd::Benchmark<type, search_class> benchmark(                      \
           filename, lookups, num_repeats, perf, build, fence, cold_cache, \
-          track_errors, csv, num_threads, search);                        \
+          track_errors, csv, num_threads, search, write_portion);         \
       func(benchmark, pareto, only_mode, only, filename);                 \
       found_search_type = true;                                           \
       break;                                                              \
@@ -122,6 +122,9 @@ int main(int argc, char* argv[]) {
       "errors",
       "Tracks index errors, and report those instead of lookup times")(
       "csv", "Output a CSV of results in addition to a text file")(
+      "write",
+      "Specify the mount of data to be excluded from the initial index, and written during the benchmark",
+      cxxopts::value<std::string>()->default_value("0"))(
       "search",
       "Specify a search type, one of: binary, branchless_binary, linear, "
       "interpolation",
@@ -155,7 +158,14 @@ int main(int argc, char* argv[]) {
   const std::string lookups = result["lookups"].as<std::string>();
   const std::string search_type = result["search"].as<std::string>();
   const bool only_mode = result.count("only") || std::getenv("SOSD_ONLY");
+  uint16_t write_portion;
   std::string only;
+
+  if (result.count("write")){
+    const auto tmp = result["write"].as<std::string>();
+    write_portion = stoi(tmp);
+    std::cout << "Write_portion: " << write_portion << std::endl; //TODO remove
+  }
 
   if (result.count("only")) {
     only = result["only"].as<std::string>();

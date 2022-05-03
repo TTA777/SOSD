@@ -46,6 +46,10 @@ class Alex : public Competitor {
     return (SearchBound){start, stop};
   }
 
+  void Insert(const KeyValue<uint64_t> keyValue) const {
+    map_.insert(keyValue.key, keyValue.value);
+  }
+
   std::string name() const { return "ALEX"; }
 
   std::size_t size() const { return map_.model_size() + map_.data_size(); }

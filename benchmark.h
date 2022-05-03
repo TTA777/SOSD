@@ -42,7 +42,7 @@ class Benchmark {
             const std::string& lookups_filename, const size_t num_repeats,
             const bool perf, const bool build, const bool fence,
             const bool cold_cache, const bool track_errors, const bool csv,
-            const size_t num_threads, const SearchClass<KeyType> searcher)
+            const size_t num_threads, const SearchClass<KeyType> searcher, const uint16_t write_portion)
       : data_filename_(data_filename),
         lookups_filename_(lookups_filename),
         num_repeats_(num_repeats),
@@ -54,10 +54,15 @@ class Benchmark {
         track_errors_(track_errors),
         csv_(csv),
         num_threads_(num_threads),
-        searcher_(searcher) {
+        searcher_(searcher),
+        write_portion_(write_portion) {
     if ((int)cold_cache + (int)perf + (int)fence > 1) {
       util::fail(
           "Can only specify one of cold cache, perf counters, or fence.");
+    }
+    std::cout << "write_portion_: " << write_portion_ << std::endl;
+    if (write_portion > 100){
+      util::fail("Write portion can not exceed 100% of the dataset");
     }
 
     static constexpr const char* prefix = "data/";
@@ -110,6 +115,8 @@ class Benchmark {
       return;
     }
 
+    std::cout << "Building index"
+              << std::endl;
     build_ns_ = index.Build(index_data_);
 
     // Do equality lookups.
@@ -143,7 +150,11 @@ class Benchmark {
             "Perf, cold cache, and fence mode require full builds. Disable "
             "fast mode.");
       }
+      std::cout << "Doing lookups"
+                << std::endl;
       DoEqualityLookups<Index, false, false, false>(index);
+      std::cout << "Printing results"
+                << std::endl;
       PrintResult(index);
     }
 
@@ -350,6 +361,8 @@ class Benchmark {
                 << all_times.str()  // has a leading comma
                 << "," << index.size() << "," << build_ns_ << ","
                 << searcher_.name() << "," << runs_[0] << ',' << lookups_.size() << std::endl;
+    } else {
+      std::cout << "An error occured running the index" << std::endl;
     }
     if (csv_) {
       PrintResultCSV(index);
@@ -424,6 +437,7 @@ class Benchmark {
   std::string dataset_name_;
   std::vector<Row<KeyType>> data_;
   std::vector<KeyValue<KeyType>> index_data_;
+  std::vector<KeyValue<KeyType>> insertion_data_;
   bool unique_keys_;
   std::vector<EqualityLookup<KeyType>> lookups_;
   uint64_t build_ns_;
@@ -443,6 +457,9 @@ class Benchmark {
   bool cold_cache_;
   bool track_errors_;
   bool csv_;
+  // The percentage of the data that is excluded from the initial build,
+  // to be inserted during the benchmark
+  uint16_t write_portion_;
   // Number of lookup threads.
   const size_t num_threads_;
   std::vector<uint64_t> memory_;  // Some memory we can read to flush the cache

@@ -67,6 +67,11 @@ class ARTPrimaryLB : public Competitor {
     return (SearchBound){start, stop};
   }
 
+  void Insert(const KeyValue<uint64_t> keyValue) const {
+    //Todo, verify works as expected
+    insert(tree_, &tree_, keyValue.key, 0, keyValue.value, 8);
+  }
+
   std::string name() const { return "ART"; }
 
   std::size_t size() const { return sizeof(*this) + allocated_byte_count; }
