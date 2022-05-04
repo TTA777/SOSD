@@ -1,5 +1,5 @@
 #! /usr/bin/env bash
-DATASETS=osm_cellids_200M_uint64 #$(cat scripts/datasets_under_test.txt)
+DATASETS=fb_200M_uint64 #$(cat scripts/datasets_under_test.txt)
 INDEXES=ALEX
 
 echo "Executing benchmark and saving results..."
@@ -26,7 +26,7 @@ function do_benchmark() {
     echo "Already have results for $1"
   else
     echo "Executing workload $1"
-    vtune -collect uarch-exploration -start-paused $BENCHMARK -r $2 ./data/$1 ./data/$1_equality_lookups_10M  --only=$3 | tee ./results/$1_results.txt
+    vtune -collect uarch-exploration -start-paused $BENCHMARK -r $2 ./data/$1 ./data/$1_equality_lookups_10M --write=50  --only=$3 | tee ./results/$1_results.txt
   fi
 }
 

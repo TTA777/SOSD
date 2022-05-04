@@ -119,6 +119,7 @@ class Benchmark {
               << std::endl;
     if (write_portion_ == 100){
       const auto empty_data_set = std::vector<KeyValue<KeyType>>();
+      //TODO consider if this is the right choice, likely isn't
       build_ns_ = index.Build(empty_data_set);
     }
     else if (write_portion_ < 100 && write_portion_ > 0){
@@ -128,8 +129,10 @@ class Benchmark {
       std::uniform_int_distribution<int> dist(0, index_data_.size() -1);
 
       auto ids = std::vector<int>();
-      for (int i = 0; i < index_data_.size() * (write_portion_ /100); i++){
-        ids.push_back(i);
+      for (int i = 0; i < lookups_.size() * (write_portion_ /100); i++){
+        //We treat the size of lookups as the total amount of requests we want to do
+        // It's crude, but should work
+        ids.push_back(dist(generator));
       }
 
       std::sort(ids.begin(), ids.end(), std::greater<>() );
@@ -300,21 +303,35 @@ class Benchmark {
         individual_ns_sum_ += timing;
 
       } else {
-        // not tracking errors, measure the lookup time.
-        bound = index.EqualityLookup(lookup_key);
-        iter = std::lower_bound(
-            data_.begin() + bound.start, data_.begin() + bound.stop, lookup_key,
-            [](const Row<KeyType>& lhs, const KeyType lookup_key) {
-              return lhs.key < lookup_key;
-            });
-        result = 0;
-        while (iter != data_.end() && iter->key == lookup_key) {
-          result += iter->data[0];
-          ++iter;
-        }
-        if (result != expected) {
-          run_failed = true;
-          return;
+        std::default_random_engine generator;
+        std::uniform_int_distribution<int> dist(0, 100);
+        int r = dist(generator);
+
+        if (r < write_portion_){ //If we are doing an insertion
+          if (insertion_data_.empty()) {
+            std::cout << "More inserts happened than was expected, ran out of data to insert" << std::endl;
+            std::cerr << "More inserts happened than was expected, ran out of data to insert" << std::endl;
+            continue;
+          }
+          index.Insert(insertion_data_[insertion_data_.size() -1]);
+          insertion_data_.pop_back(); //Remove the entry from the insertion data that we just added to the index
+        } else { //We are doing a lookup
+          // not tracking errors, measure the lookup time.
+          bound = index.EqualityLookup(lookup_key);
+          iter = std::lower_bound(
+              data_.begin() + bound.start, data_.begin() + bound.stop, lookup_key,
+              [](const Row<KeyType>& lhs, const KeyType lookup_key) {
+                return lhs.key < lookup_key;
+              });
+          result = 0;
+          while (iter != data_.end() && iter->key == lookup_key) {
+            result += iter->data[0];
+            ++iter;
+          }
+          if (result != expected) {
+            run_failed = true;
+            return;
+          }
         }
       }
 
