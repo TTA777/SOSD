@@ -117,7 +117,34 @@ class Benchmark {
 
     std::cout << "Building index"
               << std::endl;
-    build_ns_ = index.Build(index_data_);
+    if (write_portion_ == 100){
+      const auto empty_data_set = std::vector<KeyValue<KeyType>>();
+      build_ns_ = index.Build(empty_data_set);
+    }
+    else if (write_portion_ < 100 && write_portion_ > 0){
+      //TODO account for the key needed for lookups being removed here
+      // resulting in it being inserted later than the requested lookup
+      std::default_random_engine generator;
+      std::uniform_int_distribution<int> dist(0, index_data_.size() -1);
+
+      auto ids = std::vector<int>();
+      for (int i = 0; i < index_data_.size() * (write_portion_ /100); i++){
+        ids.push_back(i);
+      }
+
+      std::sort(ids.begin(), ids.end(), std::greater<>() );
+      std::cout << "largest id " << ids[0] << std::endl;
+      std::cout << "Smallest id " << ids[ids.size()-1] << std::endl;
+      for (int id : ids) {
+        insertion_data_.push_back(index_data_[id]);
+        index_data_.erase(index_data_.begin() + id);
+      }
+      std::cout << "Saving " << insertion_data_.size() << " keys for later insertion" << std::endl;
+      std::cout << "Using " << index_data_.size() << " for building the index" << std::endl;
+      build_ns_ = index.Build(index_data_);
+    } else {
+      build_ns_ = index.Build(index_data_);
+    }
 
     // Do equality lookups.
     if constexpr (!sosd_config::fast_mode) {
@@ -150,11 +177,7 @@ class Benchmark {
             "Perf, cold cache, and fence mode require full builds. Disable "
             "fast mode.");
       }
-      std::cout << "Doing lookups"
-                << std::endl;
       DoEqualityLookups<Index, false, false, false>(index);
-      std::cout << "Printing results"
-                << std::endl;
       PrintResult(index);
     }
 
@@ -194,6 +217,7 @@ class Benchmark {
 
   template <class Index, bool time_each, bool fence, bool clear_cache>
   void DoEqualityLookups(Index& index) {
+    std::cout << "Doing lookups" << std::endl;
     if (build_) return;
 
     // Atomic counter used to assign work to threads.
@@ -213,6 +237,7 @@ class Benchmark {
         ms = util::timing([&] {
           DoEqualityLookupsCoreLoop<Index, time_each, fence, clear_cache>(
               index, 0, lookups_.size(), run_failed);
+          __itt_pause();
         });
       } else {
         // Reset atomic counter.
@@ -325,6 +350,7 @@ class Benchmark {
 
   template <class Index>
   void PrintResult(const Index& index) {
+    std::cout << "Printing results" << std::endl;
     if (track_errors_) {
       std::cout << "RESULT: " << index.name() << "," << index.variant() << ","
                 << log_sum_search_bound_ << "," << l1_sum_search_bound_ << ","
