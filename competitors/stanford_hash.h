@@ -206,6 +206,11 @@ class CuckooHash : public Competitor {
     return (SearchBound){value, value + 1};
   }
 
+  template <class KeyType>
+  void Insert(const KeyValue<KeyType> keyValue) {
+    util::fail("Attempted to use inserts on index where wrapper does not support");
+  }
+
   std::string name() const { return "CuckooMap"; }
 
   std::size_t size() const { return map_.size_bytes(); }

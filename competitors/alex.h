@@ -46,7 +46,7 @@ class Alex : public Competitor {
     return (SearchBound){start, stop};
   }
 
-  void Insert(const KeyValue<uint64_t> keyValue) const {
+  void Insert(const KeyValue<KeyType> keyValue) {
     map_.insert(keyValue.key, keyValue.value);
   }
 

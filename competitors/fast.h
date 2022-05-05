@@ -94,6 +94,11 @@ class Fast : public Competitor {
     return (SearchBound){lb, ub};
   }
 
+  template <class KeyType>
+  void Insert(const KeyValue<KeyType> keyValue) {
+    util::fail("Attempted to use inserts on index where wrapper does not support");
+  }
+
   std::string name() const { return "FAST"; }
 
   std::size_t size() const {

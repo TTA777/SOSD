@@ -112,6 +112,10 @@ class Wormhole : public Competitor {
     return (SearchBound){start, stop + 1};
   }
 
+  void Insert(const KeyValue<KeyType> keyValue) {
+    util::fail("Attempted to use inserts on index where wrapper does not support");
+  }
+
   std::string name() const { return "Wormhole"; }
 
   std::size_t size() const {

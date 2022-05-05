@@ -85,6 +85,10 @@ class FST : public Competitor {
   }
 
   std::string name() const { return "FST"; }
+  void Insert(const KeyValue<KeyType> keyValue) {
+    util::fail("Attempted to use inserts on index where wrapper does not support");
+  }
+
 
   std::size_t size() const {
     // return used memory in bytes

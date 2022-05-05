@@ -32,6 +32,11 @@ class FAST64 : public Competitor {
     return (SearchBound){v1, v2};
   }
 
+  template <class KeyType>
+  void Insert(const KeyValue<KeyType> keyValue) {
+    util::fail("Attempted to use inserts on index where wrapper does not support");
+  }
+
   std::string name() const { return "FAST"; }
 
   int variant() const { return size_scale; }
@@ -83,6 +88,11 @@ class FAST32 : public Competitor {
     lookup_fast32(tree_, lookup_key, &v1, &v2);
     v2 = (uint32_t)std::min(data_size_, (uint64_t)v2);
     return (SearchBound){v1, v2};
+  }
+
+  template <class KeyType>
+  void Insert(const KeyValue<KeyType> keyValue) {
+    util::fail("Attempted to use inserts on index where wrapper does not support");
   }
 
   std::string name() const { return "FAST"; }

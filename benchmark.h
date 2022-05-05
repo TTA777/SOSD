@@ -129,19 +129,25 @@ class Benchmark {
       std::uniform_int_distribution<int> dist(0, index_data_.size() -1);
 
       auto ids = std::vector<int>();
-      for (int i = 0; i < lookups_.size() * (write_portion_ /100); i++){
+      std::cout << "Gathering " << (lookups_.size() * write_portion_) / 100<< " ids for later insertion" << std::endl;
+      for (int i = 0; i < (lookups_.size() * write_portion_) /100; i++){
         //We treat the size of lookups as the total amount of requests we want to do
         // It's crude, but should work
         ids.push_back(dist(generator));
       }
 
+      std::cout << "Sorting ids" << std::endl;
       std::sort(ids.begin(), ids.end(), std::greater<>() );
       std::cout << "largest id " << ids[0] << std::endl;
       std::cout << "Smallest id " << ids[ids.size()-1] << std::endl;
+      insertion_data_.reserve((lookups_.size() * write_portion_) / 100);
       for (int id : ids) {
         insertion_data_.push_back(index_data_[id]);
-        index_data_.erase(index_data_.begin() + id);
+        index_data_[id] = index_data_.back();
+        index_data_.pop_back();
       }
+      std::sort(index_data_.begin(), index_data_.end(), [](KeyValue<KeyType> kv, KeyValue<KeyType> kv2) {return kv.key < kv2.key; });
+      std::cout << "Smallest: " << index_data_[0].key << " Largest: " << index_data_[index_data_.size() -1].key;
       std::cout << "Saving " << insertion_data_.size() << " keys for later insertion" << std::endl;
       std::cout << "Using " << index_data_.size() << " for building the index" << std::endl;
       build_ns_ = index.Build(index_data_);
@@ -313,7 +319,8 @@ class Benchmark {
             std::cerr << "More inserts happened than was expected, ran out of data to insert" << std::endl;
             continue;
           }
-          index.Insert(insertion_data_[insertion_data_.size() -1]);
+          auto tmp = insertion_data_[insertion_data_.size() -1];
+          index.Insert(tmp);
           insertion_data_.pop_back(); //Remove the entry from the insertion data that we just added to the index
         } else { //We are doing a lookup
           // not tracking errors, measure the lookup time.

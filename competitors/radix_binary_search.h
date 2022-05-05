@@ -49,6 +49,10 @@ class RadixBinarySearch : public Competitor {
     return (SearchBound){begin, end};
   }
 
+  void Insert(const KeyValue<KeyType> keyValue) {
+    util::fail("Attempted to use inserts on index where wrapper does not support");
+  }
+
   std::string name() const { return std::string("RBS"); }
 
   std::size_t size() const { return sizeof(uint32_t) * radix_hint_.size(); }

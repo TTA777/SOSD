@@ -38,7 +38,7 @@ class PGM : public Competitor {
     return (SearchBound){foundItem->key(), foundItem->key() + 1};
   }
 
-  void Insert(const KeyValue<uint64_t> keyValue) const {
+  void Insert(const KeyValue<KeyType> keyValue) {
     pgm_.insert(keyValue.key, keyValue.value);
   }
 

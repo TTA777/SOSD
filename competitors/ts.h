@@ -31,6 +31,10 @@ class TS : public Competitor {
     return {sb.begin, sb.end};
   }
 
+  void Insert(const KeyValue<KeyType> keyValue) {
+    util::fail("Attempted to use inserts on index where wrapper does not support");
+  }
+
   std::string name() const { return "TS"; }
 
   std::size_t size() const { return ts_.GetSize(); }

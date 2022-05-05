@@ -39,6 +39,10 @@ class RMI_B {
     return (SearchBound){start, stop};
   }
 
+  void Insert(const KeyValue<KeyType> keyValue) {
+    util::fail("Attempted to use inserts on index where wrapper does not support");
+  }
+
   std::string name() const { return "RMI"; }
 
   std::size_t size() const { return rmi_size; }

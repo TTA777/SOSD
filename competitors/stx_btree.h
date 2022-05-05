@@ -50,8 +50,8 @@ class STXBTree : public Competitor {
     return (SearchBound){start, stop};
   }
 
-  void Insert(const KeyValue<uint64_t> keyValue) const {
-   btree_.insert(keyValue.key, keyValue.value);
+  void Insert(const KeyValue<KeyType> keyValue) {
+   btree_.insert2(keyValue.key, keyValue.value);
   }
 
   std::string name() const { return "BTree"; }

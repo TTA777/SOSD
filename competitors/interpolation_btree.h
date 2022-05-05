@@ -358,6 +358,9 @@ class InterpolationBTree : public Competitor {
     uint64_t lower = ub < size_scale ? 0 : ub - size_scale;
     return SearchBound{lower, ub};
   }
+  void Insert(const KeyValue<KeyType> keyValue) {
+    util::fail("Attempted to use inserts on index where wrapper does not support");
+  }
 
   std::string name() const { return "IBTree"; }
 

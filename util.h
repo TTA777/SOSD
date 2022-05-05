@@ -82,6 +82,8 @@ static void set_cpu_affinity(const uint32_t core_id) {
 #endif
 }
 
+// Times the given function
+// Returns the duration in ns
 static uint64_t timing(std::function<void()> fn) {
   const auto start = std::chrono::high_resolution_clock::now();
   fn();

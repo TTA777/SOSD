@@ -25,6 +25,10 @@ class RobinHash : public Competitor {
     return (SearchBound){search.value(), search.value() + 1};
   }
 
+  void Insert(const KeyValue<KeyType> keyValue) {
+    util::fail("Attempted to use inserts on index where wrapper does not support");
+  }
+
   std::string name() const { return "RobinHash"; }
 
   std::size_t size() const {

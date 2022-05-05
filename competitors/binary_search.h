@@ -15,6 +15,10 @@ class BinarySearch : public Competitor {
     return (SearchBound){0, data_size};
   }
 
+  void Insert(const KeyValue<KeyType> keyValue) {
+    util::fail("Attempted to use inserts on index where wrapper does not support");
+  }
+
   std::string name() const { return "BinarySearch"; }
 
   std::size_t size() const { return 0; }
