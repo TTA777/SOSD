@@ -1,6 +1,7 @@
 #pragma once
 
 #include <immintrin.h>
+#include <ittnotify.h>
 #include <math.h>
 
 #include <algorithm>
@@ -13,8 +14,6 @@
 #include "searches/branching_binary_search.h"
 #include "util.h"
 #include "utils/perf_event.h"
-
-#include <ittnotify.h>
 
 #ifdef __linux__
 #define checkLinux(x) (x)
@@ -42,7 +41,8 @@ class Benchmark {
             const std::string& lookups_filename, const size_t num_repeats,
             const bool perf, const bool build, const bool fence,
             const bool cold_cache, const bool track_errors, const bool csv,
-            const size_t num_threads, const SearchClass<KeyType> searcher, const uint16_t write_portion)
+            const size_t num_threads, const SearchClass<KeyType> searcher,
+            const uint16_t write_portion)
       : data_filename_(data_filename),
         lookups_filename_(lookups_filename),
         num_repeats_(num_repeats),
@@ -61,7 +61,7 @@ class Benchmark {
           "Can only specify one of cold cache, perf counters, or fence.");
     }
     std::cout << "write_portion_: " << write_portion_ << std::endl;
-    if (write_portion > 100){
+    if (write_portion > 100) {
       util::fail("Write portion can not exceed 100% of the dataset");
     }
 
@@ -115,41 +115,54 @@ class Benchmark {
       return;
     }
 
-    std::cout << "Building index"
-              << std::endl;
-    if (write_portion_ == 100){
-      const auto empty_data_set = std::vector<KeyValue<KeyType>>();
-      //TODO consider if this is the right choice, likely isn't
-      build_ns_ = index.Build(empty_data_set);
-    }
-    else if (write_portion_ < 100 && write_portion_ > 0){
-      //TODO account for the key needed for lookups being removed here
-      // resulting in it being inserted later than the requested lookup
+    std::cout << "Building index" << std::endl;
+    if (write_portion_ <= 100 && write_portion_ > 0) {
+      // TODO account for the key needed for lookups being removed here
+      //  resulting in it being inserted later than the requested lookup
       std::default_random_engine generator;
-      std::uniform_int_distribution<int> dist(0, index_data_.size() -1);
+      std::uniform_int_distribution<int> dist(0, index_data_.size() - 1);
 
       auto ids = std::vector<int>();
-      std::cout << "Gathering " << (lookups_.size() * write_portion_) / 100<< " ids for later insertion" << std::endl;
-      for (int i = 0; i < (lookups_.size() * write_portion_) /100; i++){
-        //We treat the size of lookups as the total amount of requests we want to do
-        // It's crude, but should work
-        ids.push_back(dist(generator));
+      std::cout << "Gathering " << (lookups_.size() * write_portion_) / 100
+                << " ids for later insertion" << std::endl;
+      for (int i = 0; i < (lookups_.size() * write_portion_) / 100; i++) {
+        // We treat the size of lookups as the total amount of requests we want
+        // to do.  It's crude, but should work
+        const auto id = dist(generator);
+        const auto tmp = EqualityLookup<KeyType>{index_data_[id].key, 0};
+        const auto found = std::binary_search(
+            lookups_.begin(), lookups_.end(), tmp,
+            [](EqualityLookup<KeyType> kv, EqualityLookup<KeyType> kv2) {
+              return kv.key < kv2.key;
+            });
+        if (!found) {  // The generated key is not part of the lookup values
+          ids.push_back(id);
+        } else {
+          i--;  // We'll need to generate another key that is not in the lookup
+                // keys
+        }
       }
 
       std::cout << "Sorting ids" << std::endl;
-      std::sort(ids.begin(), ids.end(), std::greater<>() );
+      std::sort(ids.begin(), ids.end(), std::greater<>());
       std::cout << "largest id " << ids[0] << std::endl;
-      std::cout << "Smallest id " << ids[ids.size()-1] << std::endl;
+      std::cout << "Smallest id " << ids[ids.size() - 1] << std::endl;
       insertion_data_.reserve((lookups_.size() * write_portion_) / 100);
       for (int id : ids) {
         insertion_data_.push_back(index_data_[id]);
         index_data_[id] = index_data_.back();
         index_data_.pop_back();
       }
-      std::sort(index_data_.begin(), index_data_.end(), [](KeyValue<KeyType> kv, KeyValue<KeyType> kv2) {return kv.key < kv2.key; });
-      std::cout << "Smallest: " << index_data_[0].key << " Largest: " << index_data_[index_data_.size() -1].key;
-      std::cout << "Saving " << insertion_data_.size() << " keys for later insertion" << std::endl;
-      std::cout << "Using " << index_data_.size() << " for building the index" << std::endl;
+      std::sort(index_data_.begin(), index_data_.end(),
+                [](KeyValue<KeyType> kv, KeyValue<KeyType> kv2) {
+                  return kv.key < kv2.key;
+                });
+      std::cout << "Smallest: " << index_data_[0].key
+                << " Largest: " << index_data_[index_data_.size() - 1].key;
+      std::cout << "Saving " << insertion_data_.size()
+                << " keys for later insertion" << std::endl;
+      std::cout << "Using " << index_data_.size() << " for building the index"
+                << std::endl;
       build_ns_ = index.Build(index_data_);
     } else {
       build_ns_ = index.Build(index_data_);
@@ -158,7 +171,9 @@ class Benchmark {
     // Do equality lookups.
     if constexpr (!sosd_config::fast_mode) {
       if (track_errors_) {
-        return DoLookupsWithErrorTracking(index); // TODO consider where instrumentation can be added in this case
+        return DoLookupsWithErrorTracking(
+            index);  // TODO consider where instrumentation can be added in this
+                     // case
       }
       if (perf_) {
         checkLinux(({
@@ -281,6 +296,10 @@ class Benchmark {
     uint64_t result;
     typename std::vector<Row<KeyType>>::iterator iter;
 
+    std::cout << "Processing " << lookups_.size() << " request of which "
+              << insertion_data_.size() << " are write" << std::endl;
+    std::default_random_engine generator;
+    std::uniform_int_distribution<int> dist(0, 100);
     for (unsigned int idx = start; idx < limit; ++idx) {
       // Compute the actual index for debugging.
       const volatile uint64_t lookup_key = lookups_[idx].key;
@@ -309,24 +328,28 @@ class Benchmark {
         individual_ns_sum_ += timing;
 
       } else {
-        std::default_random_engine generator;
-        std::uniform_int_distribution<int> dist(0, 100);
         int r = dist(generator);
 
-        if (r < write_portion_){ //If we are doing an insertion
+        if (r <= write_portion_ && write_portion_ != 0) {  // If we are doing an insertion
           if (insertion_data_.empty()) {
-            std::cout << "More inserts happened than was expected, ran out of data to insert" << std::endl;
-            std::cerr << "More inserts happened than was expected, ran out of data to insert" << std::endl;
+            std::cout << "More inserts happened than was expected, ran out of "
+                         "data to insert"
+                      << std::endl;
+            std::cerr << "More inserts happened than was expected, ran out of "
+                         "data to insert"
+                      << std::endl;
             continue;
           }
-          auto tmp = insertion_data_[insertion_data_.size() -1];
+          auto tmp = insertion_data_[insertion_data_.size() - 1];
           index.Insert(tmp);
-          insertion_data_.pop_back(); //Remove the entry from the insertion data that we just added to the index
-        } else { //We are doing a lookup
+          insertion_data_.pop_back();  // Remove the entry from the insertion
+                                       // data that we just added to the index
+        } else {  // We are doing a lookup
           // not tracking errors, measure the lookup time.
           bound = index.EqualityLookup(lookup_key);
           iter = std::lower_bound(
-              data_.begin() + bound.start, data_.begin() + bound.stop, lookup_key,
+              data_.begin() + bound.start, data_.begin() + bound.stop,
+              lookup_key,
               [](const Row<KeyType>& lhs, const KeyType lookup_key) {
                 return lhs.key < lookup_key;
               });
@@ -336,6 +359,8 @@ class Benchmark {
             ++iter;
           }
           if (result != expected) {
+            std::cout << "Expected : " << expected << " Result: " << result
+                      << std::endl;
             run_failed = true;
             return;
           }
@@ -410,7 +435,8 @@ class Benchmark {
       std::cout << "RESULT: " << index.name() << "," << index.variant()
                 << all_times.str()  // has a leading comma
                 << "," << index.size() << "," << build_ns_ << ","
-                << searcher_.name() << "," << runs_[0] << ',' << lookups_.size() << std::endl;
+                << searcher_.name() << "," << runs_[0] << ',' << lookups_.size()
+                << std::endl;
     } else {
       std::cout << "An error occured running the index" << std::endl;
     }
