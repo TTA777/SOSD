@@ -9,6 +9,7 @@
 #include <fstream>
 #include <iostream>
 #include <sstream>
+#include <set>
 
 #include "config.h"
 #include "searches/branching_binary_search.h"
@@ -125,19 +126,24 @@ class Benchmark {
       auto ids = std::vector<int>();
       std::cout << "Gathering " << (lookups_.size() * write_portion_) / 100
                 << " ids for later insertion" << std::endl;
+
+      auto lookupKeys = std::set<KeyType>();
+      for (EqualityLookup<KeyType> lookup : lookups_) {
+        lookupKeys.insert(lookup.key);
+      }
+
+      // We treat the size of lookups as the total amount of requests we want
+      // to do.  It's crude, but should work
       for (int i = 0; i < (lookups_.size() * write_portion_) / 100; i++) {
-        // We treat the size of lookups as the total amount of requests we want
-        // to do.  It's crude, but should work
         const auto id = dist(generator);
-        const auto tmp = EqualityLookup<KeyType>{index_data_[id].key, 0};
-        const auto found = std::binary_search(
-            lookups_.begin(), lookups_.end(), tmp,
-            [](EqualityLookup<KeyType> kv, EqualityLookup<KeyType> kv2) {
-              return kv.key < kv2.key;
-            });
-        if (!found) {  // The generated key is not part of the lookup values
+
+        std:: cout << "using id " << id;
+        auto not_in = lookupKeys.find(index_data_[id].key) == lookupKeys.end();
+        if (not_in) {  // The generated key is not part of the lookup values
           ids.push_back(id);
+          std::cout << "adding id " << id << " with key " << index_data_[id].key << std::endl;
         } else {
+          std::cout << "not adding id" << id << " with key " << index_data_[id].key << std::endl;
           i--;  // We'll need to generate another key that is not in the lookup
                 // keys
         }
@@ -147,6 +153,7 @@ class Benchmark {
       std::sort(ids.begin(), ids.end(), std::greater<>());
       std::cout << "largest id " << ids[0] << std::endl;
       std::cout << "Smallest id " << ids[ids.size() - 1] << std::endl;
+      std::cout << "Ids size: " << ids.size() << std::endl;
       insertion_data_.reserve((lookups_.size() * write_portion_) / 100);
       for (int id : ids) {
         insertion_data_.push_back(index_data_[id]);
@@ -158,7 +165,7 @@ class Benchmark {
                   return kv.key < kv2.key;
                 });
       std::cout << "Smallest: " << index_data_[0].key
-                << " Largest: " << index_data_[index_data_.size() - 1].key;
+                << " Largest: " << index_data_[index_data_.size() - 1].key << std::endl;
       std::cout << "Saving " << insertion_data_.size()
                 << " keys for later insertion" << std::endl;
       std::cout << "Using " << index_data_.size() << " for building the index"
@@ -345,11 +352,12 @@ class Benchmark {
           insertion_data_.pop_back();  // Remove the entry from the insertion
                                        // data that we just added to the index
         } else {  // We are doing a lookup
+          std::cout << "Lookup" << std::endl;
           // not tracking errors, measure the lookup time.
           bound = index.EqualityLookup(lookup_key);
           iter = std::lower_bound(
               data_.begin() + bound.start, data_.begin() + bound.stop,
-              lookup_key,
+            lookup_key,
               [](const Row<KeyType>& lhs, const KeyType lookup_key) {
                 return lhs.key < lookup_key;
               });
@@ -362,6 +370,18 @@ class Benchmark {
             std::cout << "Expected : " << expected << " Result: " << result
                       << std::endl;
             run_failed = true;
+
+            for (int i = 0; i < insertion_data_.size(); i++){
+              if (insertion_data_[i].key == lookup_key){
+                std::cout << "Expected key " << lookup_key << " was in insertion data with value " << insertion_data_[i].value << std::endl;
+              }
+            }
+            for (int i = 0; i < index_data_.size(); i++){
+              if (index_data_[i].key == lookup_key){
+                std::cout << "Expected key " << lookup_key << "was in index data with value " << index_data_[i].value << std::endl;
+              }
+            }
+
             return;
           }
         }
