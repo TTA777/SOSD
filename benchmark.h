@@ -123,7 +123,6 @@ class Benchmark {
       std::default_random_engine generator;
       std::uniform_int_distribution<int> dist(0, index_data_.size() - 1);
 
-      auto ids = std::vector<int>();
       std::cout << "Gathering " << (lookups_.size() * write_portion_) / 100
                 << " ids for later insertion" << std::endl;
 
@@ -132,27 +131,26 @@ class Benchmark {
         lookupKeys.insert(lookup.key);
       }
 
+      auto ids_set = std::set<int>();
       // We treat the size of lookups as the total amount of requests we want
       // to do.  It's crude, but should work
-      for (int i = 0; i < (lookups_.size() * write_portion_) / 100; i++) {
+      while (ids_set.size() < (lookups_.size() * write_portion_) / 100){
         const auto id = dist(generator);
 
-        std:: cout << "using id " << id;
         auto not_in = lookupKeys.find(index_data_[id].key) == lookupKeys.end();
         if (not_in) {  // The generated key is not part of the lookup values
-          ids.push_back(id);
-          std::cout << "adding id " << id << " with key " << index_data_[id].key << std::endl;
-        } else {
-          std::cout << "not adding id" << id << " with key " << index_data_[id].key << std::endl;
-          i--;  // We'll need to generate another key that is not in the lookup
-                // keys
+          ids_set.insert(id);
         }
       }
 
+      auto ids = std::vector<int>(ids_set.begin(), ids_set.end());
+      ids_set.clear();
       std::cout << "Sorting ids" << std::endl;
       std::sort(ids.begin(), ids.end(), std::greater<>());
       std::cout << "largest id " << ids[0] << std::endl;
       std::cout << "Smallest id " << ids[ids.size() - 1] << std::endl;
+      auto it = std::unique(ids.begin(), ids.end());
+      ids.resize( std::distance(ids.begin(),it) );
       std::cout << "Ids size: " << ids.size() << std::endl;
       insertion_data_.reserve((lookups_.size() * write_portion_) / 100);
       for (int id : ids) {
