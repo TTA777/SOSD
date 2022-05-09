@@ -20,15 +20,14 @@ class PGM : public Competitor {
 
     std::vector<std::pair<KeyType, uint64_t>> kvPairs;
     kvPairs.reserve(data.size());
-    std::cout << "Copying data for PGM" << std::endl;
     for (KeyValue<KeyType> kv : data) {
       const auto key = kv.key;
       const auto value = kv.value;
-      std::cout << "Pushing key value pair: " << key << " , " << value << std::endl;
       kvPairs.push_back(std::make_pair(key, value));
     }
 
-    std::cout << "Building PGM" << std::endl;
+    data_size_ = data.size();
+
     uint64_t build_time =
         util::timing([&] { pgm_ = decltype(pgm_)(kvPairs.begin(), kvPairs.end()); });
 
@@ -36,9 +35,25 @@ class PGM : public Competitor {
   }
 
   SearchBound EqualityLookup(const KeyType lookup_key) const {
+    auto it = pgm_.lower_bound(lookup_key);
+
+    uint64_t guess;
+    if (it == pgm_.cend()) {
+      guess = data_size_ - 1;
+    } else {
+      guess = it.payload();
+    }
+
+    const uint64_t error = pgm_error;
+
+    const uint64_t start = guess < error ? 0 : guess - error;
+    const uint64_t stop = guess + 1 > data_size_
+                          ? data_size_
+                          : guess + 1;  // stop is exclusive (that's why +1)
+
     auto foundItem = pgm_.find(lookup_key);
 
-    return (SearchBound){foundItem->key(), foundItem->key() + 1};
+    return (SearchBound){start, stop};
   }
 
   void Insert(const KeyValue<KeyType> keyValue) {
@@ -56,6 +71,7 @@ class PGM : public Competitor {
   int variant() const { return pgm_error; }
 
  private:
+  uint64_t data_size_ = 0;
   DynamicPGMIndex<KeyType, uint64_t, PGMIndex<KeyType, pgm_error, 4>, 18> pgm_;
 };
 
