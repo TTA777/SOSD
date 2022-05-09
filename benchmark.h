@@ -118,8 +118,6 @@ class Benchmark {
 
     std::cout << "Building index" << std::endl;
     if (write_portion_ <= 100 && write_portion_ > 0) {
-      // TODO account for the key needed for lookups being removed here
-      //  resulting in it being inserted later than the requested lookup
       std::default_random_engine generator;
       std::uniform_int_distribution<int> dist(0, index_data_.size() - 1);
 
@@ -132,9 +130,12 @@ class Benchmark {
       }
 
       auto ids_set = std::set<int>();
+      // The amount of extra keys that we are adding to the insertion data
+      // This is done, in case slightly more write requests are done than the distribution would indicate
+      int extraEntries = lookups_.size() / 1000;
       // We treat the size of lookups as the total amount of requests we want
       // to do.  It's crude, but should work
-      while (ids_set.size() < (lookups_.size() * write_portion_) / 100){
+      while (ids_set.size() < (lookups_.size() * write_portion_) / 100 + extraEntries){
         const auto id = dist(generator);
 
         auto not_in = lookupKeys.find(index_data_[id].key) == lookupKeys.end();
@@ -304,7 +305,7 @@ class Benchmark {
     std::cout << "Processing " << lookups_.size() << " request of which "
               << insertion_data_.size() << " are write" << std::endl;
     std::default_random_engine generator;
-    std::uniform_int_distribution<int> dist(0, 100);
+    std::uniform_int_distribution<int> dist(0, 99);
     for (unsigned int idx = start; idx < limit; ++idx) {
       // Compute the actual index for debugging.
       const volatile uint64_t lookup_key = lookups_[idx].key;
@@ -335,22 +336,16 @@ class Benchmark {
       } else {
         int r = dist(generator);
 
-        if (r <= write_portion_ && write_portion_ != 0) {  // If we are doing an insertion
+        if (r < write_portion_) {  // If we are doing an insertion
           if (insertion_data_.empty()) {
-            std::cout << "More inserts happened than was expected, ran out of "
-                         "data to insert"
-                      << std::endl;
-            std::cerr << "More inserts happened than was expected, ran out of "
-                         "data to insert"
-                      << std::endl;
-            continue;
+            util::fail("More inserts happened than was expected, ran out of "
+                "data to insert");
           }
           auto tmp = insertion_data_[insertion_data_.size() - 1];
           index.Insert(tmp);
           insertion_data_.pop_back();  // Remove the entry from the insertion
                                        // data that we just added to the index
         } else {  // We are doing a lookup
-          std::cout << "Lookup" << std::endl;
           // not tracking errors, measure the lookup time.
           bound = index.EqualityLookup(lookup_key);
           iter = std::lower_bound(

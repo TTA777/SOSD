@@ -20,12 +20,15 @@ class PGM : public Competitor {
 
     std::vector<std::pair<KeyType, uint64_t>> kvPairs;
     kvPairs.reserve(data.size());
+    std::cout << "Copying data for PGM" << std::endl;
     for (KeyValue<KeyType> kv : data) {
       const auto key = kv.key;
       const auto value = kv.value;
+      std::cout << "Pushing key value pair: " << key << " , " << value << std::endl;
       kvPairs.push_back(std::make_pair(key, value));
     }
 
+    std::cout << "Building PGM" << std::endl;
     uint64_t build_time =
         util::timing([&] { pgm_ = decltype(pgm_)(kvPairs.begin(), kvPairs.end()); });
 
