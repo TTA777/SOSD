@@ -38,25 +38,22 @@ class PGM : public Competitor {
     auto it = pgm_.lower_bound(lookup_key);
 
     uint64_t guess;
-    if (it == pgm_.cend()) {
+    if (it == pgm_.end()) {
       guess = data_size_ - 1;
     } else {
-      guess = it.payload();
+      guess = it.operator*().value();
     }
 
     const uint64_t error = pgm_error;
 
     const uint64_t start = guess < error ? 0 : guess - error;
-    const uint64_t stop = guess + 1 > data_size_
-                          ? data_size_
-                          : guess + 1;  // stop is exclusive (that's why +1)
-
-    auto foundItem = pgm_.find(lookup_key);
+    const uint64_t stop = guess + 1;  // stop is exclusive (that's why +1)
 
     return (SearchBound){start, stop};
   }
 
   void Insert(const KeyValue<KeyType> keyValue) {
+    data_size_++;
     pgm_.insert(keyValue.key, keyValue.value);
   }
 

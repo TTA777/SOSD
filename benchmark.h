@@ -348,8 +348,9 @@ class Benchmark {
         } else {  // We are doing a lookup
           // not tracking errors, measure the lookup time.
           bound = index.EqualityLookup(lookup_key);
+          const int stop = bound.stop > data_.size() ? data_.size() : bound.stop;
           iter = std::lower_bound(
-              data_.begin() + bound.start, data_.begin() + bound.stop,
+              data_.begin() + bound.start, data_.begin() + stop,
             lookup_key,
               [](const Row<KeyType>& lhs, const KeyType lookup_key) {
                 return lhs.key < lookup_key;
@@ -362,6 +363,14 @@ class Benchmark {
           if (result != expected) {
             std::cout << "Expected : " << expected << " Result: " << result
                       << std::endl;
+            iter = std::lower_bound(
+                data_.begin() + bound.start, data_.begin() + bound.stop,
+                lookup_key,
+                [](const Row<KeyType>& lhs, const KeyType lookup_key) {
+                  return lhs.key < lookup_key;
+                });
+            std::cout << "Bound start: " << bound.start << " Stop: " << bound.stop << std::endl;
+            std::cout << "Found key: " << iter->key << std::endl;
             run_failed = true;
 
             for (int i = 0; i < insertion_data_.size(); i++){
@@ -371,7 +380,7 @@ class Benchmark {
             }
             for (int i = 0; i < index_data_.size(); i++){
               if (index_data_[i].key == lookup_key){
-                std::cout << "Expected key " << lookup_key << "was in index data with value " << index_data_[i].value << std::endl;
+                std::cout << "Expected key " << lookup_key << " was in index data with value " << index_data_[i].value << std::endl;
               }
             }
 

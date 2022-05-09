@@ -39,9 +39,7 @@ class Alex : public Competitor {
     const uint64_t error = size_scale - 1;
 
     const uint64_t start = guess < error ? 0 : guess - error;
-    const uint64_t stop = guess + 1 > data_size_
-                              ? data_size_
-                              : guess + 1;  // stop is exclusive (that's why +1)
+    const uint64_t stop = guess + 1;  // stop is exclusive (that's why +1)
 
     return (SearchBound){start, stop};
   }
