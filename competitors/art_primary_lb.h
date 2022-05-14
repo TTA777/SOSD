@@ -67,6 +67,7 @@ class ARTPrimaryLB : public Competitor {
 
   template <class KeyType>
   void Insert(const KeyValue<KeyType> keyValue) {
+    if (size_scale > 1 && keyValue.value % size_scale != 0) return;
     //Todo, verify works as expected
     uint8_t key[8];
     swapBytes(keyValue.key, key);
