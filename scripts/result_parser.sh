@@ -1,7 +1,7 @@
 #! /usr/bin/env bash
 # Script assumes SOSD is only run for a single data structure at a time, and for a single repetition
 INDEXES="ALEX BTree ART PGM"
-RESULT_NAME=results/$1
+RESULT_FOLDER=$1
 QUERY_COUNT=10000000 #TODO replace with other count if workload is changed from 10M
 function formatTmamMetric() {
   UNFORMATED=$1
@@ -12,10 +12,10 @@ function formatTmamMetric() {
 function getOverallMetrics() {
   FILE=$1
   SOSDRESULT=$(cat $FILE | grep RESULT | sed 's/,/ /g')
-  echo -ne $FILE'\t' | sed 's/results\///' | sed 's/_results.*.txt//'                             #Full dataset name
-  echo -ne $FILE'\t' | perl -pe 's/_[0-9].+?M//' | sed 's/results\///' | sed 's/_results.*.txt//' #Dataset name
+  echo -ne $FILE'\t' | sed "s,$RESULT_FOLDER,,"  | sed 's/_results.*.txt//'                             #Full dataset name
+  echo -ne $FILE'\t' | sed "s,$RESULT_FOLDER,," | perl -pe 's/_[0-9].+?M//' | sed 's/results\///' | sed 's/_results.*.txt//' #Dataset name
   echo $SOSDRESULT'\t' | awk '{printf $2 "\t"}'                                                   #Index name
-  echo -ne $FILE'\t' | sed 's/M_.*//' | grep -o '[0-9:]*' | tr -d '\n'
+  echo -ne $FILE'\t' | sed "s,$RESULT_FOLDER,," | sed 's/M_.*//' | grep -o '[0-9:]*' | tr -d '\n'
   echo -ne '\t'                                                 #NUmber of entries in dataset (Millions)
   echo $SOSDRESULT | awk '{printf $5 "\t"}'                     # Memory(bytes)
   echo $SOSDRESULT | awk '{printf $6 "\t"}'                     # Build_time(ns)
@@ -63,14 +63,14 @@ printColumnHeaders
 for dataset in $(cat ./scripts/datasets_under_test.txt); do
   for index in $INDEXES; do
     file=$dataset'_results_'$index'.txt'
-    if [ -f 'results/'$file ]; then
-      getOverallMetrics "results/"$file
+    if [ -f "$RESULT_FOLDER$file" ]; then
+      getOverallMetrics "$RESULT_FOLDER"$file
       # TMAM metrics
       while read -r line; do
         if [[ $line =~ "Bad" || $line =~ "Bound:" || $line =~ "Retiring" ]]; then
           formatTmamMetric "$line"
         fi
-      done <"results/$file"
+      done <"$RESULT_FOLDER$file"
       echo
     fi
   done
