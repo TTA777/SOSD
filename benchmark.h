@@ -8,8 +8,8 @@
 #include <dtl/thread.hpp>
 #include <fstream>
 #include <iostream>
-#include <sstream>
 #include <set>
+#include <sstream>
 
 #include "config.h"
 #include "searches/branching_binary_search.h"
@@ -123,6 +123,23 @@ class Benchmark {
 
       std::cout << "Gathering " << (lookups_.size() * write_portion_) / 100
                 << " ids for later insertion" << std::endl;
+      // PGM index is not able to handle the maximum values for its keytype
+      // I.e. If it is uint32, it can't handle 4294967295
+      // and uint64 can't handle 18446744073709551615u
+      if (index.name() == "PGM"){
+        const uint64_t forbidden_keys[2] = {18446744073709551615u, 4294967295};
+        // Remove the forbidden keys from the lookup set if they exists
+        for (auto key : forbidden_keys) {
+          const auto it = std::find_if(
+              lookups_.begin(), lookups_.end(),
+              [](EqualityLookup<KeyType> lookup_key, uint64_t forbidden_key) {
+                return lookup_key.key == forbidden_key;
+              });
+          if (it == lookups_.end()) continue;
+          lookups_.erase(it);
+        }
+      }
+
 
       auto lookupKeys = std::set<KeyType>();
       for (EqualityLookup<KeyType> lookup : lookups_) {
@@ -131,11 +148,13 @@ class Benchmark {
 
       auto ids_set = std::set<int>();
       // The amount of extra keys that we are adding to the insertion data
-      // This is done, in case slightly more write requests are done than the distribution would indicate
+      // This is done, in case slightly more write requests are done than the
+      // distribution would indicate
       int extraEntries = lookups_.size() / 1000;
       // We treat the size of lookups as the total amount of requests we want
       // to do.  It's crude, but should work
-      while (ids_set.size() < (lookups_.size() * write_portion_) / 100 + extraEntries){
+      while (ids_set.size() <
+             (lookups_.size() * write_portion_) / 100 + extraEntries) {
         const auto id = dist(generator);
 
         auto not_in = lookupKeys.find(index_data_[id].key) == lookupKeys.end();
@@ -151,7 +170,7 @@ class Benchmark {
       std::cout << "largest id " << ids[0] << std::endl;
       std::cout << "Smallest id " << ids[ids.size() - 1] << std::endl;
       auto it = std::unique(ids.begin(), ids.end());
-      ids.resize( std::distance(ids.begin(),it) );
+      ids.resize(std::distance(ids.begin(), it));
       std::cout << "Ids size: " << ids.size() << std::endl;
       insertion_data_.reserve((lookups_.size() * write_portion_) / 100);
       for (int id : ids) {
@@ -164,7 +183,8 @@ class Benchmark {
                   return kv.key < kv2.key;
                 });
       std::cout << "Smallest: " << index_data_[0].key
-                << " Largest: " << index_data_[index_data_.size() - 1].key << std::endl;
+                << " Largest: " << index_data_[index_data_.size() - 1].key
+                << std::endl;
       std::cout << "Saving " << insertion_data_.size()
                 << " keys for later insertion" << std::endl;
       std::cout << "Using " << index_data_.size() << " for building the index"
@@ -338,17 +358,17 @@ class Benchmark {
 
         if (r < write_portion_) {  // If we are doing an insertion
           if (insertion_data_.empty()) {
-            util::fail("More inserts happened than was expected, ran out of "
+            util::fail(
+                "More inserts happened than was expected, ran out of "
                 "data to insert");
           }
           auto tmp = insertion_data_[insertion_data_.size() - 1];
           index.Insert(tmp);
           insertion_data_.pop_back();  // Remove the entry from the insertion
                                        // data that we just added to the index
-        } else {  // We are doing a lookup
+        } else {                       // We are doing a lookup
           // not tracking errors, measure the lookup time.
           bound = index.EqualityLookup(lookup_key);
-
         }
       }
 
