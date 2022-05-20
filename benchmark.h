@@ -8,8 +8,8 @@
 #include <dtl/thread.hpp>
 #include <fstream>
 #include <iostream>
-#include <set>
 #include <sstream>
+#include <unordered_set>
 
 #include "config.h"
 #include "searches/branching_binary_search.h"
@@ -115,51 +115,63 @@ class Benchmark {
                 << std::endl;
       return;
     }
-
-    std::cout << "Building index" << std::endl;
-    if (write_portion_ <= 100 && write_portion_ > 0) {
-      std::default_random_engine generator;
-      std::uniform_int_distribution<int> dist(0, index_data_.size() - 1);
-
-      std::cout << "Gathering " << (lookups_.size() * write_portion_) / 100
-                << " ids for later insertion" << std::endl;
-      // PGM index is not able to handle the maximum values for its keytype
-      // I.e. If it is uint32, it can't handle 4294967295
-      // and uint64 can't handle 18446744073709551615u
-      if (index.name() == "PGM"){
-        const uint64_t forbidden_keys[2] = {18446744073709551615u, 4294967295};
-        // Remove the forbidden keys from the lookup set if they exists
-        for (auto key : forbidden_keys) {
+    // PGM index is not able to handle the maximum values for its keytype
+    // I.e. If it is uint32, it can't handle 4294967295
+    // and uint64 can't handle 18446744073709551615u
+    if (index.name() == "PGM") {
+      const uint64_t forbidden_keys[2] = {18446744073709551615u, 4294967295};
+      // Remove the forbidden keys from the lookup set if they exists
+      for (auto key : forbidden_keys) {
+        while (true) { // while in case of duplicates
           const auto it = std::find_if(
               lookups_.begin(), lookups_.end(),
-              [](EqualityLookup<KeyType> lookup_key, uint64_t forbidden_key) {
-                return lookup_key.key == forbidden_key;
+              [&key](EqualityLookup<KeyType> lookup_key) {
+                return lookup_key.key == key;
               });
-          if (it == lookups_.end()) continue;
+          if (it == lookups_.end()) break;
           lookups_.erase(it);
         }
       }
+    }
 
+    std::cout << "Building index" << std::endl;
+    if (write_portion_ > 0) {
+      std::default_random_engine generator;
+      std::uniform_int_distribution<int> dist(0, index_data_.size() - 1);
 
-      auto lookupKeys = std::set<KeyType>();
-      for (EqualityLookup<KeyType> lookup : lookups_) {
-        lookupKeys.insert(lookup.key);
-      }
-
-      auto ids_set = std::set<int>();
-      // The amount of extra keys that we are adding to the insertion data
-      // This is done, in case slightly more write requests are done than the
-      // distribution would indicate
-      int extraEntries = lookups_.size() / 1000;
+      auto ids_set = std::unordered_set<int>();
       // We treat the size of lookups as the total amount of requests we want
       // to do.  It's crude, but should work
-      while (ids_set.size() <
-             (lookups_.size() * write_portion_) / 100 + extraEntries) {
-        const auto id = dist(generator);
-
-        auto not_in = lookupKeys.find(index_data_[id].key) == lookupKeys.end();
-        if (not_in) {  // The generated key is not part of the lookup values
+      const int insertCount = (lookups_.size() * write_portion_) / 100;
+      ids_set.reserve(insertCount);
+      std::cout << "Gathering " << insertCount << " ids for later insertion"
+                << std::endl;
+      if (write_portion_ == 100) {
+        // No lookups will happen, no need to account for conflicts
+        while (ids_set.size() < lookups_.size()) {
+          const auto id = dist(generator);
           ids_set.insert(id);
+        }
+      } else if (write_portion_ < 100) {
+        // We need to ensure we don't have a conflict with the lookup keys
+        // So a bit of extra setup
+        auto lookupKeys = std::unordered_set<KeyType>();
+        lookupKeys.reserve(lookups_.size());
+        for (EqualityLookup<KeyType> lookup : lookups_) {
+          lookupKeys.insert(lookup.key);
+        }
+        // The amount of extra keys that we are adding to the insertion data
+        // This is done, in case slightly more write requests are done than the
+        // distribution would indicate
+        int extraEntries = lookups_.size() / 1000;
+        while (ids_set.size() < insertCount + extraEntries) {
+          const auto id = dist(generator);
+
+          auto not_in =
+              lookupKeys.find(index_data_[id].key) == lookupKeys.end();
+          if (not_in) {  // The generated key is not part of the lookup values
+            ids_set.insert(id);
+          }
         }
       }
 
@@ -371,7 +383,6 @@ class Benchmark {
           bound = index.EqualityLookup(lookup_key);
         }
       }
-
       if constexpr (fence) __sync_synchronize();
     }
   }

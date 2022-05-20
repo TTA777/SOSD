@@ -49,7 +49,6 @@ class STXBTree : public Competitor {
   }
 
   void Insert(const KeyValue<KeyType> keyValue) {
-    if (size_scale > 1 && keyValue.value % size_scale != 0) return;
     data_size_++;
    btree_.insert2(keyValue.key, keyValue.value);
   }
