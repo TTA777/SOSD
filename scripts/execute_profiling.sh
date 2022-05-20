@@ -39,7 +39,7 @@ function do_benchmark() {
     echo "Already have results for $1"
   else
     echo "Executing workload $1 for index $3"
-    vtune -collect uarch-exploration -start-paused $BENCHMARK -r $2 ./data/$1 ./data/$1_equality_lookups_10M --write=$WRITE_PORTION --only=$3 | tee ./results/$WRITE_PORTION/$ITERATION/$1_results_$3.txt
+    vtune -collect uarch-exploration -start-paused $BENCHMARK -r $2 ./data/$1 ./data/$1_equality_lookups_100M --write=$WRITE_PORTION --only=$3 | tee ./results/$WRITE_PORTION/$ITERATION/$1_results_$3.txt
   fi
 }
 
