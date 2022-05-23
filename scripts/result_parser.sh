@@ -2,7 +2,7 @@
 # Script assumes SOSD is only run for a single data structure at a time, and for a single repetition
 INDEXES="ALEX BTree ART PGM"
 RESULT_FOLDER=$1
-QUERY_COUNT=10000000 #TODO replace with other count if workload is changed from 10M
+QUERY_COUNT=100000000
 function formatTmamMetric() {
   UNFORMATED=$1
   echo -n $UNFORMATED | sed 's/ *%.*//' | sed 's/.*://'

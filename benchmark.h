@@ -381,6 +381,18 @@ class Benchmark {
         } else {                       // We are doing a lookup
           // not tracking errors, measure the lookup time.
           bound = index.EqualityLookup(lookup_key);
+          const int stop = bound.stop > data_.size() ? data_.size() : bound.stop;
+          iter = std::lower_bound(
+              data_.begin() + bound.start, data_.begin() + stop,
+            lookup_key,
+              [](const Row<KeyType>& lhs, const KeyType lookup_key) {
+                return lhs.key < lookup_key;
+              });
+          result = 0;
+          while (iter != data_.end() && iter->key == lookup_key) {
+            result += iter->data[0];
+            ++iter;
+          }
         }
       }
       if constexpr (fence) __sync_synchronize();
