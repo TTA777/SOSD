@@ -7,11 +7,11 @@
 template <template <typename> typename Searcher>
 void benchmark_32_btree(sosd::Benchmark<uint32_t, Searcher>& benchmark,
                         bool pareto) {
-  benchmark.template Run<STXBTree<uint32_t, 32>>();
+  benchmark.template Run<STXBTree<uint32_t, 1>>();
   if (pareto) {
-    benchmark.template Run<STXBTree<uint32_t, 1>>();
     benchmark.template Run<STXBTree<uint32_t, 4>>();
     benchmark.template Run<STXBTree<uint32_t, 16>>();
+    benchmark.template Run<STXBTree<uint32_t, 32>>();
     benchmark.template Run<STXBTree<uint32_t, 64>>();
     benchmark.template Run<STXBTree<uint32_t, 128>>();
     benchmark.template Run<STXBTree<uint32_t, 512>>();
@@ -28,12 +28,12 @@ void benchmark_32_btree(sosd::Benchmark<uint32_t, Searcher>& benchmark,
 template <template <typename> typename Searcher>
 void benchmark_64_btree(sosd::Benchmark<uint64_t, Searcher>& benchmark,
                         bool pareto) {
+  benchmark.template Run<STXBTree<uint64_t, 1>>();
   // tuned for Pareto efficiency
-  benchmark.template Run<STXBTree<uint64_t, 32>>();
   if (pareto) {
-    benchmark.template Run<STXBTree<uint64_t, 1>>();
     benchmark.template Run<STXBTree<uint64_t, 4>>();
     benchmark.template Run<STXBTree<uint64_t, 16>>();
+    benchmark.template Run<STXBTree<uint64_t, 32>>();
     benchmark.template Run<STXBTree<uint64_t, 64>>();
     benchmark.template Run<STXBTree<uint64_t, 128>>();
     benchmark.template Run<STXBTree<uint64_t, 512>>();
